@@ -87,7 +87,7 @@ same store can be read simultaneously as Browser visualization, HTTP rows, or MC
 In mock mode the three agents replay a fixed script about prime numbers, so every mock run is
 about primes regardless of the task. Use a real model for different tasks.
 
-Any OpenAI-compatible endpoint works (verified with Abacus.AI RouteLLM). Edit `.env`:
+Any OpenAI-compatible endpoint works. Edit `.env`:
 
 ```
 LLM_MODE=openai
