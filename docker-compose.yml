@@ -1,0 +1,53 @@
+# BlackBox: init creates the store, `relate` serves it read-only/live,
+# `agents` is the only writer (run on demand via `docker compose run`).
+
+# Shared config for both agents-shaped services (writer + one-shot init).
+x-agents: &agents
+  build: ./agents
+  env_file: .env
+  environment:
+    STORE_PATH: /data/graph
+    RELATE_MCP_URL: http://relate:7475
+  volumes:
+    - store:/data
+
+services:
+  # One-shot: creates the store directory + schema so the follower can open it.
+  init:
+    <<: *agents
+    command: ["init"]
+
+  # Reader: tails the store's WAL live and exposes Bolt/HTTP/MCP.
+  relate:
+    build: ./relate-server
+    env_file: .env
+    environment:
+      STORE_PATH: /data/graph
+    volumes:
+      - store:/data
+    ports:
+      - "127.0.0.1:7687:7687"   # Bolt (Neo4j Browser)
+      - "127.0.0.1:7474:7474"   # HTTP query API
+      - "127.0.0.1:7475:7475"   # MCP (read-only)
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # Writer, run on demand: `docker compose run --rm agents run|ask`.
+  agents:
+    <<: *agents
+    profiles: ["tools"]
+    depends_on:
+      - relate
+
+  # Optional local LLM (`--profile local-llm`), for a fully offline stack.
+  ollama:
+    image: ollama/ollama
+    profiles: ["local-llm"]
+    volumes:
+      - ollama:/root/.ollama
+
+volumes:
+  store:
+  ollama:
